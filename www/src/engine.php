@@ -424,7 +424,7 @@ if (substr($ID_EX_M,0,1)=="1") //MemRead ID/EX
     if ($stallo==0)
     {
       $stallo++;
-      if ($isBranch || $_SESSION['forwarding']==0) {
+      if (($isBranch||$isJalr) || $_SESSION['forwarding']==0) {
         $stallo++;
       }
     }
@@ -433,7 +433,7 @@ if (substr($ID_EX_M,0,1)=="1") //MemRead ID/EX
 
 if (substr($EX_MEM_M,0,1)=="1") //MemRead EX/MEM
 {
-  if ($isBranch && $_SESSION['forwarding']==1)
+  if (($isBranch||$isJalr) && $_SESSION['forwarding']==1)
   {
     if ((($crit_RL1 && $EX_MEM_RegW==$RL1) || ($crit_RL2 && $EX_MEM_RegW==$RL2)) && $EX_MEM_RegW!=0) //ignore x0
     {
@@ -450,7 +450,7 @@ if (substr($EX_MEM_M,0,1)=="1") //MemRead EX/MEM
 
 if (substr($ID_EX_WB,0,1)=="1") //RegWrite ID/EX
 {
-  if ($isBranch)
+  if ($isBranch||$isJalr)
   {
     if ((($crit_RL1 && $ID_EX_RD==$RL1) || ($crit_RL2 && $ID_EX_RD==$RL2)) && $ID_EX_RD!=0) //ignore x0
     {
@@ -690,8 +690,8 @@ $temp_MEM_WB_RegW=$EX_MEM_RegW;
 
 $tempImm=BinToGMP($temp_ID_EX_imm,0);
 $tempIstruzione=($stallo)?$istruzione:(($PCsrc&&($_SESSION['branchRes']==0))?str_repeat('0',32):$memIstr[$tempPC/4]);
-$branchAddr=($IF_ID_PC+BinToGMP($temp_ID_EX_imm,0)*2);
-$jalrAddr=$temp_ID_EX_Data1+gmp_intval(BinToGMP($temp_ID_EX_imm,0));
+$branchAddr=($IF_ID_PC+$tempImm*2);
+$jalrAddr=$bDato1+gmp_intval($tempImm);
 $jumpAddr=($isJalr)?$jalrAddr:$branchAddr;
 $newPC=IDMux($PCsrc,false,$jumpAddr,($tempPC+4));
 
