@@ -1,0 +1,74 @@
+name: Build Standalone EXE
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up PHP
+      uses: shivammathur/setup-php-action@v2
+      with:
+        php-version: '8.1'
+        extensions: json
+    
+    - name: Download PHP Portable
+      run: |
+        # Download portable PHP
+        Invoke-WebRequest -Uri "https://windows.php.net/downloads/releases/php-8.1-nts-Win32-vs16-x64.zip" -OutFile php-portable.zip
+        Expand-Archive php-portable.zip -DestinationPath php-portable
+    
+    - name: Create Application Bundle
+      run: |
+        # Create output directory structure
+        mkdir -p bundle\php
+        mkdir -p bundle\app
+        
+        # Copy PHP runtime
+        Copy-Item -Path php-portable\* -Destination bundle\php -Recurse
+        
+        # Copy WebRISC-V application
+        Copy-Item -Path .\ -Destination bundle\app -Exclude '.git', '.github' -Recurse
+    
+    - name: Create Launcher Script
+      run: |
+        @"
+        @echo off
+        cd /d "%~dp0"
+        start php\php.exe -S localhost:8080 -t app
+        timeout /t 2
+        start http://localhost:8080
+        "@
+        | Out-File -FilePath bundle\run.bat -Encoding ASCII
+    
+    - name: Package with Inno Setup
+      run: |
+        # Install Inno Setup
+        choco install innosetup -y
+        
+        # Build installer
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build-script.iss
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WebRISC-V-Installer
+        path: Output\WebRISC-V-Setup.exe
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: WebRISC-V ${{ github.ref }}
+        files: Output\WebRISC-V-Setup.exe
